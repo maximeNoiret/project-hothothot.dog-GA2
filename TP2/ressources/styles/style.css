@@ -1,0 +1,19 @@
+.rouge {
+    border: 2px solid;
+    border-color: red;
+}
+.orange {
+    border: 2px solid;
+    border-color: orange;
+}
+.vert {
+    border: 2px solid;
+    border-color: green;
+}
+.bleu {
+    border: 2px solid;
+    border-color: blue;
+}
+.hidden {
+    display: none;
+}
