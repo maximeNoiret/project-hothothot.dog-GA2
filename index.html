@@ -4,68 +4,45 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>HOTHOTHOT DOG</title>
-        <link rel="stylesheet" href="/ressources/styles/style.css">
-        <link rel="icon" type="image/png" href="/ressources/images/favicon.png">
-        <link rel="icon" type="image/x-icon" href="/ressources/images/favicon.ico">
-        <link rel="icon" type="image/webp" href="/ressources/images/favicon.webp">
-    </head>
+        <link rel="stylesheet" href="/styles/style.css">
+        </head>
     <body>
         <header>
-            <h1>
-                Systeme de temperature
-            </h1>
-
-            <!-- Système d'onglets accessible avec ARIA -->
-            <div role="tablist" aria-label="Panneaux de température">
-                <button role="tab"
-                        id="btnTempsReel"
-                        class="active"
-                        aria-selected="true"
-                        aria-controls="tempsReel"
-                        tabindex="0">
-                    Temps Réel
-                </button>
-
-                <button role="tab"
-                        id="btnHistorique"
-                        aria-selected="false"
-                        aria-controls="historique"
-                        tabindex="-1">
-                    Historique
-                </button>
-            </div>
-            <hr>
+            <nav role="navigation" aria-label="Menu principal">
+            <ul>
+                <li><a href="#" id="link-home" class="active">Accueil</a></li>
+                <li><a href="#" id="link-doc">Documentation</a></li>
+                <li class="user-actions">
+                    <button id="btn-user-info">Infos Compte</button>
+                    <button id="btn-logout">Déconnexion</button>
+                </li>
+            </ul>
+            </nav>
         </header>
+
         <main>
-            <!-- Panneau 1: Temps Réel -->
-            <div id="tempsReel"
-                 role="tabpanel"
-                 aria-labelledby="btnTempsReel"
-                 tabindex="0">
-                <h2>
-                    Temperature:
-                </h2>
-                <p id="temperature" aria-live="polite" aria-atomic="true" aria-relevant="all"></p>
-                <div id="avertTemp" role="alert">
-                    <p id="message" aria-live="polite" aria-atomic="true" aria-relevant="all"></p>
+            <section id="vue-accueil">
+                <h1>Système de température</h1>
+                
+                <div role="tablist">
+                    <button role="tab" id="btnTempsReel" class="active" aria-selected="true" aria-controls="tempsReel" tabindex="0">Temps Réel</button>
+                    <button role="tab" id="btnHistorique" aria-selected="false" aria-controls="historique" tabindex="-1">Historique</button>
                 </div>
-            </div>
 
-            <!-- Panneau 2: Historique -->
-            <div id="historique"
-                 role="tabpanel"
-                 aria-labelledby="btnHistorique"
-                 tabindex="0"
-                 class="hidden"
-                 hidden>
-                <h2>
-                    Historique des temperatures:
-                </h2>
-                <p id="listeHistorique" aria-live="polite" aria-atomic="true" aria-relevant="all">
+                <div id="tempsReel" role="tabpanel" tabindex="0">
+                    <p id="temperature">-- °C</p>
+                    <p id="message"></p>
+                </div>
 
-                </p>
-            </div>
+                <div id="historique" role="tabpanel" tabindex="0" class="hidden" hidden>
+                    <p id="listeHistorique"></p>
+                </div>
+            </section>
+
+            <section id="vue-doc" hidden>
+                </section>
         </main>
-        <script src="/ressources/scripts/main.js"></script>
+        
+        <script type="module" src="/scripts/main.js"></script>
     </body>
 </html>
