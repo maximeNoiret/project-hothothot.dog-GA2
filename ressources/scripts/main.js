@@ -655,12 +655,38 @@ async function initializeApp() {
     if (!navigator.onLine) {
         console.log('Mode hors-ligne: utilisation des données locales');
     } else {
-        // Fallback avec génération de données aléatoires (pour démonstration)
-        setInterval(() => {
-            const temp1 = Math.floor(Math.random() * 50) - 10;
-            const temp2 = Math.floor(Math.random() * 50) - 10;
-            rapportMeteo.ajouterTemperature(temp1, temp2);
-        }, 2000);
+        // Fallback avec API Open-Meteo (gratuite et sans authentification)
+        const fetchWeatherData = async () => {
+            try {
+                // Récupérer la position de l'utilisateur (France par défaut: Paris)
+                const latitude = 48.8566;
+                const longitude = 2.3522;
+                
+                const response = await fetch(
+                    `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m&temperature_unit=celsius&timezone=Europe/Paris`
+                );
+                
+                if (!response.ok) throw new Error('Erreur API météo');
+                
+                const data = await response.json();
+                const currentTemp = data.current.temperature_2m;
+                const humidity = data.current.relative_humidity_2m;
+                
+                // Simuler deux capteurs avec légère variation
+                const temp1 = parseFloat(currentTemp.toFixed(1));
+                const temp2 = parseFloat((currentTemp + (Math.random() * 2 - 1)).toFixed(1));
+                
+                console.log(`🌡️ Températures API: temp1=${temp1}°C, temp2=${temp2}°C, humidité=${humidity}%`);
+                rapportMeteo.ajouterTemperature(temp1, temp2);
+                await db.addTemperature(temp1, temp2);
+            } catch (error) {
+                console.error('Erreur lors de la récupération de la météo:', error);
+            }
+        };
+        
+        // Récupérer les données à l'initialisation et toutes les 30 secondes
+        fetchWeatherData();
+        setInterval(fetchWeatherData, 30000);
     }
 
     // Sauvegarder les alertes périodiquement
