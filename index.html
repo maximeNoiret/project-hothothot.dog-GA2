@@ -3,69 +3,118 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="theme-color" content="#ff6b6b">
+        <meta name="description" content="Système de surveillance de température en temps réel">
         <title>HOTHOTHOT DOG</title>
         <link rel="stylesheet" href="/ressources/styles/style.css">
         <link rel="icon" type="image/png" href="/ressources/images/favicon.png">
         <link rel="icon" type="image/x-icon" href="/ressources/images/favicon.ico">
         <link rel="icon" type="image/webp" href="/ressources/images/favicon.webp">
+        <link rel="manifest" href="/manifest.json">
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" defer></script>
     </head>
     <body>
-        <header>
-            <h1>
-                Systeme de temperature
-            </h1>
+        <!-- Barre de navigation principale -->
+        <nav class="navbar">
+            <h1 class="navbar-title">🔥 HOTHOTHOT DOG</h1>
+        </nav>
 
-            <!-- Système d'onglets accessible avec ARIA -->
-            <div role="tablist" aria-label="Panneaux de température">
-                <button role="tab"
-                        id="btnTempsReel"
-                        class="active"
-                        aria-selected="true"
-                        aria-controls="tempsReel"
-                        tabindex="0">
-                    Temps Réel
-                </button>
+        <!-- Page Accueil -->
+        <div id="accueil" class="page active">
+            <header>
+                <h1>Système de Surveillance de Température</h1>
 
-                <button role="tab"
-                        id="btnHistorique"
-                        aria-selected="false"
-                        aria-controls="historique"
-                        tabindex="-1">
-                    Historique
-                </button>
-            </div>
-            <hr>
-        </header>
-        <main>
-            <!-- Panneau 1: Temps Réel -->
-            <div id="tempsReel"
-                 role="tabpanel"
-                 aria-labelledby="btnTempsReel"
-                 tabindex="0">
-                <h2>
-                    Temperature:
-                </h2>
-                <p id="temperature" aria-live="polite" aria-atomic="true" aria-relevant="all"></p>
-                <div id="avertTemp" role="alert">
-                    <p id="message" aria-live="polite" aria-atomic="true" aria-relevant="all"></p>
+                <!-- Système d'onglets accessible avec ARIA -->
+                <div role="tablist" aria-label="Panneaux de température">
+                    <button role="tab"
+                            id="btnTempsReel"
+                            class="active"
+                            aria-selected="true"
+                            aria-controls="tempsReel"
+                            tabindex="0">
+                        Temps Réel
+                    </button>
+
+                    <button role="tab"
+                            id="btnHistorique"
+                            aria-selected="false"
+                            aria-controls="historique"
+                            tabindex="-1">
+                        Historique
+                    </button>
                 </div>
-            </div>
+            </header>
+            <main>
+                <!-- Panneau 1: Temps Réel -->
+                <div id="tempsReel"
+                     role="tabpanel"
+                     aria-labelledby="btnTempsReel"
+                     tabindex="0">
+                    <h2>Température en Temps Réel:</h2>
+                    <div class="capteurs-container">
+                        <div class="capteur-card">
+                            <h3>📍 Capteur 1</h3>
+                            <span id="temperature1" class="temperature-display" aria-live="polite"></span>
+                        </div>
+                        <div class="capteur-card">
+                            <h3>📍 Capteur 2</h3>
+                            <span id="temperature2" class="temperature-display" aria-live="polite"></span>
+                        </div>
+                    </div>
+                    <div class="min-max-container">
+                        <div class="stat-box">
+                            <p>Température Min (aujourd'hui)</p>
+                            <span id="minTemp" class="stat-value">--°C</span>
+                        </div>
+                        <div class="stat-box">
+                            <p>Température Max (aujourd'hui)</p>
+                            <span id="maxTemp" class="stat-value">--°C</span>
+                        </div>
+                    </div>
+                    <div id="avertTemp" role="alert" aria-live="assertive">
+                        <p id="message" aria-live="polite" aria-atomic="true" aria-relevant="all"></p>
+                    </div>
+                </div>
 
-            <!-- Panneau 2: Historique -->
-            <div id="historique"
-                 role="tabpanel"
-                 aria-labelledby="btnHistorique"
-                 tabindex="0"
-                 class="hidden"
-                 hidden>
-                <h2>
-                    Historique des temperatures:
-                </h2>
-                <p id="listeHistorique" aria-live="polite" aria-atomic="true" aria-relevant="all">
+                <!-- Panneau 2: Historique -->
+                <div id="historique"
+                     role="tabpanel"
+                     aria-labelledby="btnHistorique"
+                     tabindex="0"
+                     class="hidden"
+                     hidden>
+                    <h2>Historique des Températures:</h2>
+                    <div class="chart-container">
+                        <canvas id="tempChart"></canvas>
+                    </div>
+                </div>
+            </main>
+        </div>
 
-                </p>
+        <!-- Boîte de dialogue d'alertes -->
+        <dialog id="alertDialog" class="alert-dialog">
+            <div class="dialog-header">
+                <h2>⚠️ Historique des Alertes</h2>
+                <button class="close-btn" aria-label="Fermer">&times;</button>
             </div>
-        </main>
+            <div id="alertsList" class="alerts-list">
+                <p>Aucune alerte pour le moment</p>
+            </div>
+            <div class="dialog-footer">
+                <button id="closeAlertDialog" class="btn-close">Fermer</button>
+            </div>
+        </dialog>
+
+        <!-- Service Worker Registration -->
+        <script>
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/service-worker.js')
+                        .catch(error => console.log('Service Worker registration failed:', error));
+                });
+            }
+        </script>
+
         <script src="/ressources/scripts/main.js"></script>
     </body>
 </html>
