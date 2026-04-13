@@ -1,0 +1,13 @@
+{
+  "titre": "Documentation du Projet",
+  "description": "Cette application permet de surveiller les températures en temps réel via l'API HotHotHot.",
+  "points_cles": [
+    "Utilisation de l'API Fetch pour le temps réel",
+    "Gestion de l'historique via un fichier JSON local",
+    "Interface accessible (ARIA)",
+    "Navigation Single Page App (AJAX)",
+    "Visuel fait avec IA",
+    "Si nous devions refaire leprojet, le groupe devrait mieux s'organiser",
+    "Adam, Maxime, Dimitri"
+  ]
+}
