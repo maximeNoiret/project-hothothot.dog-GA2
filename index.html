@@ -10,13 +10,19 @@
         <link rel="icon" type="image/png" href="/ressources/images/favicon.png">
         <link rel="icon" type="image/x-icon" href="/ressources/images/favicon.ico">
         <link rel="icon" type="image/webp" href="/ressources/images/favicon.webp">
-        <link rel="manifest" href="/manifest.json">
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" defer></script>
     </head>
     <body>
         <!-- Barre de navigation principale -->
         <nav class="navbar">
             <h1 class="navbar-title">🔥 HOTHOTHOT DOG</h1>
+    
+            <div style="display: flex; align-items: center; gap: 10px; color: white;">
+                <span id="apiStatusDot" style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: orange;"></span>
+                <span id="apiStatusText">Connexion...</span>
+            </div>
+
+            <button id="btnDoc" class="btn-nav">Documentation</button> <button id="btnCompte" class="btn-nav">👤 Mon Compte</button>
         </nav>
 
         <!-- Page Accueil -->

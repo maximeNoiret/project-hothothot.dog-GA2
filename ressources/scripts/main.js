@@ -1,89 +1,3 @@
-/**
- * Main.js - Point d'entrée refactorisé mais fonctionnel
- * Version modulaire et maintenable
- */
-
-// ============================================
-// DATABASE SERVICE
-// ============================================
-class TemperatureDatabase {
-    constructor() {
-        this.dbName = 'HotHotHot';
-        this.storeName = 'temperatures';
-        this.db = null;
-    }
-
-    async init() {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(this.dbName, 1);
-
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => {
-                this.db = request.result;
-                resolve();
-            };
-
-            request.onupgradeneeded = (event) => {
-                const db = event.target.result;
-                if (!db.objectStoreNames.contains(this.storeName)) {
-                    const store = db.createObjectStore(this.storeName, { keyPath: 'id', autoIncrement: true });
-                    store.createIndex('timestamp', 'timestamp', { unique: false });
-                    store.createIndex('date', 'date', { unique: false });
-                }
-            };
-        });
-    }
-
-    async addTemperature(temp1, temp2) {
-        const now = new Date();
-        const data = {
-            temp1,
-            temp2,
-            timestamp: now.getTime(),
-            date: now.toLocaleDateString('fr-FR')
-        };
-
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction([this.storeName], 'readwrite');
-            const store = transaction.objectStore(this.storeName);
-            const request = store.add(data);
-
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve(data);
-        });
-    }
-
-    async getTodayTemperatures() {
-        const today = new Date().toLocaleDateString('fr-FR');
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction([this.storeName], 'readonly');
-            const store = transaction.objectStore(this.storeName);
-            const index = store.index('date');
-            const request = index.getAll(today);
-
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve(request.result);
-        });
-    }
-
-    async getLastTemperatures(limit = 100) {
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction([this.storeName], 'readonly');
-            const store = transaction.objectStore(this.storeName);
-            const request = store.getAll();
-
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => {
-                const all = request.result;
-                resolve(all.slice(-limit));
-            };
-        });
-    }
-}
-
-// ====================================
-// Observable Pattern
-// ====================================
 class RapportMeteoObservable {
     constructor() {
         this.temperatures = [];
@@ -104,15 +18,11 @@ class RapportMeteoObservable {
         });
     }
 
-    ajouterTemperature(temp1, temp2) {
-        this.temperatures.push({ temp1, temp2, timestamp: Date.now() });
+    ajouterTemperature(temp1, temp2, timestamp = Date.now()) {
+        this.temperatures.push({ temp1, temp2, timestamp });
         this.notifierObservateurs();
     }
 }
-
-// ====================================
-// Observateurs
-// ====================================
 
 class TemperatureTempsReel {
     constructor(element1, element2) {
@@ -140,7 +50,6 @@ class MinMaxTracker {
     update(temperatures) {
         if (temperatures.length === 0) return;
 
-        // Réinitialiser si c'est la première mise à jour du jour
         if (this.minValue === null) {
             const last = temperatures[temperatures.length - 1];
             this.minValue = Math.min(last.temp1, last.temp2);
@@ -204,13 +113,8 @@ class HistoriqueGraphique {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    title: {
-                        display: true,
-                        text: 'Historique des Températures'
-                    }
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'Historique des Températures' }
                 },
                 scales: {
                     y: {
@@ -218,9 +122,7 @@ class HistoriqueGraphique {
                         min: -15,
                         max: 50,
                         ticks: {
-                            callback: function(value) {
-                                return value + '°C';
-                            }
+                            callback: function(value) { return value + '°C'; }
                         }
                     }
                 }
@@ -231,12 +133,11 @@ class HistoriqueGraphique {
     update(temperatures) {
         if (temperatures.length === 0) return;
 
-        // Garder seulement les 50 dernières mesures
         const maxPoints = 50;
         const startIndex = Math.max(0, temperatures.length - maxPoints);
         const recentTemps = temperatures.slice(startIndex);
 
-        this.labels = recentTemps.map((t, i) => {
+        this.labels = recentTemps.map((t) => {
             const date = new Date(t.timestamp);
             return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
         });
@@ -247,16 +148,15 @@ class HistoriqueGraphique {
         this.chart.data.labels = this.labels;
         this.chart.data.datasets[0].data = this.data1;
         this.chart.data.datasets[1].data = this.data2;
-        this.chart.update('none'); // Sans animation
+        this.chart.update('none');
     }
 }
 
 class AlerteTemperature {
-    constructor(messageElement, temp1Element, temp2Element, db) {
+    constructor(messageElement, temp1Element, temp2Element) {
         this.messageElement = messageElement;
         this.temp1Element = temp1Element;
         this.temp2Element = temp2Element;
-        this.db = db;
         this.alertes = [];
         this.loadAlertes();
     }
@@ -271,7 +171,6 @@ class AlerteTemperature {
 
     checkAlerte(temp, element, sensorName) {
         element.removeAttribute('class');
-
         let alerte = null;
         let message = '';
 
@@ -298,7 +197,6 @@ class AlerteTemperature {
     }
 
     ajouterAlerte(alerte) {
-        // Éviter les doublons
         const derniere = this.alertes[this.alertes.length - 1];
         if (derniere && 
             derniere.sensorName === alerte.sensorName && 
@@ -309,7 +207,7 @@ class AlerteTemperature {
 
         this.alertes.push(alerte);
         if (this.alertes.length > 100) {
-            this.alertes.shift(); // Garder seulement les 100 dernières
+            this.alertes.shift();
         }
 
         this.mettreAJourDialogueAlertes();
@@ -324,7 +222,7 @@ class AlerteTemperature {
             return;
         }
 
-        alertesList.innerHTML = this.alertes.slice().reverse().map((alerte, index) => `
+        alertesList.innerHTML = this.alertes.slice().reverse().map((alerte) => `
             <div class="alert-item ${alerte.level === 'high' ? 'high' : ''}">
                 <strong>${alerte.message}</strong><br>
                 <small>${alerte.timestamp.toLocaleString('fr-FR')}</small>
@@ -334,13 +232,11 @@ class AlerteTemperature {
 
     envoyerNotification(message, level) {
         if (!('Notification' in window)) return;
-
         if (Notification.permission === 'granted') {
             const icon = level === 'high' ? '🔥' : '❄️';
             new Notification('HOTHOTHOT DOG', {
                 body: message,
                 icon: '/ressources/images/favicon.png',
-                badge: '/ressources/images/favicon.webp',
                 tag: 'temperature-alert',
                 requireInteraction: level === 'high'
             });
@@ -348,7 +244,6 @@ class AlerteTemperature {
     }
 
     loadAlertes() {
-        // Charger les alertes depuis le stockage local
         try {
             const saved = localStorage.getItem('hothothot-alertes');
             if (saved) {
@@ -358,7 +253,7 @@ class AlerteTemperature {
                 }));
             }
         } catch (e) {
-            console.error('Erreur lors du chargement des alertes:', e);
+            console.error(e);
         }
     }
 
@@ -366,46 +261,149 @@ class AlerteTemperature {
         try {
             localStorage.setItem('hothothot-alertes', JSON.stringify(this.alertes));
         } catch (e) {
-            console.error('Erreur lors de la sauvegarde des alertes:', e);
+            console.error(e);
         }
     }
 }
 
-// ====================================
-// Gestion de la Navigation
-// ====================================
-function setupNavigation() {
-    const navLinks = document.querySelectorAll('.nav-link');
-    const pages = document.querySelectorAll('.page');
+async function fetchTemperature(rapportMeteo) {
+    const statusDot = document.getElementById('apiStatusDot');
+    const statusText = document.getElementById('apiStatusText');
 
-    navLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const pageName = link.dataset.page;
+    try {
+        // utilisation de proxy car marche pas sans
+        const response = await fetch('https://api.codetabs.com/v1/proxy?quest=http://api.hothothot.dog');
+        if (!response.ok) throw new Error('Erreur API');
+        
+        const data = await response.json();
+        
+        const temp1 = parseFloat(data.capteurs[0].Valeur);
+        const temp2 = parseFloat(data.capteurs[1].Valeur);
+        
+        rapportMeteo.ajouterTemperature(temp1, temp2);
 
-            // Mettre à jour les classes
-            navLinks.forEach(l => l.classList.remove('active'));
-            pages.forEach(p => {
-                p.classList.remove('active');
-                p.style.display = 'none';
-            });
+        // SUCCÈS : La gommette sur le menu passe au vert
+        if (statusDot && statusText) {
+            statusDot.style.backgroundColor = '#4CAF50';
+            statusText.textContent = 'Connecté';
+        }
 
-            link.classList.add('active');
-            const targetPage = document.getElementById(pageName);
-            targetPage.classList.add('active');
-            targetPage.style.display = 'block';
-        });
-    });
+    } catch (error) {
+        console.error("Problème de connexion à l'API :", error);
+        
+        // ERREUR : La gommette sur le menu passe au rouge
+        if (statusDot && statusText) {
+            statusDot.style.backgroundColor = '#F44336';
+            statusText.textContent = 'Déconnecté';
+        }
+    }
 }
 
-// ====================================
-// Gestion des Onglets
-// ====================================
+async function loadHistorique(rapportMeteo) {
+    try {
+        const response = await fetch('/ressources/historique.json');
+        const snapshots = await response.json();
+        
+        snapshots.forEach(snapshot => {
+            const temp1 = parseFloat(snapshot.capteurs[0].Valeur);
+            const temp2 = parseFloat(snapshot.capteurs[1].Valeur);
+            const timestamp = snapshot.capteurs[0].Timestamp * 1000;
+            rapportMeteo.ajouterTemperature(temp1, temp2, timestamp);
+        });
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+async function chargerPageCompte(urlVirtuelle, jsonPath) {
+    try {
+        const response = await fetch(jsonPath);
+        const data = await response.json();
+        document.getElementById('accueil').style.display = 'none';
+        let comptePage = document.getElementById('pageMonCompte');
+        if (!comptePage) {
+            comptePage = document.createElement('div');
+            comptePage.id = 'pageMonCompte';
+            comptePage.className = 'page active';
+            document.querySelector('.navbar').insertAdjacentElement('afterend', comptePage);
+        }
+        comptePage.innerHTML = `
+            <div style="padding: 20px; max-width: 800px; margin: 0 auto;">
+                <h2>Mon Compte</h2>
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <p><strong>Nom :</strong> ${data.nom}</p>
+                    <p><strong>Prénom :</strong> ${data.prenom}</p>
+                    <p><strong>Email :</strong> ${data.email}</p>
+                    <p><strong>Rôle :</strong> ${data.role}</p>
+                    <button id="btnRetourAccueil" style="margin-top: 20px; padding: 10px 20px; cursor: pointer; background: #333; color: white; border: none; border-radius: 4px;">⬅ Retour à l'accueil</button>
+                </div>
+            </div>
+        `;
+        comptePage.style.display = 'block';
+        document.getElementById('btnRetourAccueil').addEventListener('click', retourAccueil);
+        history.pushState({ page: 'compte' }, "Mon Compte", urlVirtuelle);
+    } catch (error) {
+        console.error("Erreur de chargement du compte :", error);
+    }
+}
+
+function retourAccueil() {
+    const comptePage = document.getElementById('pageMonCompte');
+    if (comptePage) comptePage.style.display = 'none';
+    
+    document.getElementById('accueil').style.display = 'block';
+    history.pushState({ page: 'accueil' }, "Accueil", "/");
+}
+
+async function chargerPageDoc(urlVirtuelle, jsonPath) {
+    try {
+        const response = await fetch(jsonPath);
+        const data = await response.json();
+        document.getElementById('accueil').style.display = 'none';
+        if (document.getElementById('pageMonCompte')) document.getElementById('pageMonCompte').style.display = 'none';
+
+        let docPage = document.getElementById('pageDocumentation');
+        if (!docPage) {
+            docPage = document.createElement('div');
+            docPage.id = 'pageDocumentation';
+            docPage.className = 'page active';
+            document.querySelector('.navbar').insertAdjacentElement('afterend', docPage);
+        }
+
+        docPage.innerHTML = `
+            <div style="padding: 20px; max-width: 800px; margin: 0 auto;">
+                <h2>${data.titre}</h2>
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <p>${data.description}</p>
+                    <ul>
+                        ${data.points_cles.map(point => `<li>${point}</li>`).join('')}
+                    </ul>
+                    <button id="btnRetourDoc" style="margin-top: 20px; padding: 10px 20px; cursor: pointer; background: #333; color: white; border: none; border-radius: 4px;">⬅ Retour à l'accueil</button>
+                </div>
+            </div>
+        `;
+        docPage.style.display = 'block';
+
+        document.getElementById('btnRetourDoc').addEventListener('click', retourAccueilDepuisDoc);
+        history.pushState({ page: 'doc' }, "Documentation", urlVirtuelle);
+    } catch (error) {
+        console.error("Erreur doc:", error);
+    }
+}
+
+function retourAccueilDepuisDoc() {
+    if (document.getElementById('pageDocumentation')) document.getElementById('pageDocumentation').style.display = 'none';
+    document.getElementById('accueil').style.display = 'block';
+    history.pushState({ page: 'accueil' }, "Accueil", "/");
+}
+
 function setupTabs() {
     const tabs = document.querySelectorAll('[role="tab"]');
     const panels = document.querySelectorAll('[role="tabpanel"]');
 
     function switchTab(oldTab, newTab) {
+        if (!oldTab || !newTab) return;
+        
         oldTab.setAttribute('aria-selected', 'false');
         oldTab.setAttribute('tabindex', '-1');
         oldTab.classList.remove('active');
@@ -444,24 +442,13 @@ function setupTabs() {
             } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
                 e.preventDefault();
                 targetTab = tabs[currentIndex - 1] || tabs[tabs.length - 1];
-            } else if (e.key === 'Home') {
-                e.preventDefault();
-                targetTab = tabs[0];
-            } else if (e.key === 'End') {
-                e.preventDefault();
-                targetTab = tabs[tabs.length - 1];
             }
 
-            if (targetTab) {
-                switchTab(e.target, targetTab);
-            }
+            if (targetTab) switchTab(e.target, targetTab);
         });
     });
 }
 
-// ====================================
-// Gestion des Alertes Dialog
-// ====================================
 function setupAlertDialog() {
     const alertDialog = document.getElementById('alertDialog');
     if (!alertDialog) return;
@@ -469,265 +456,81 @@ function setupAlertDialog() {
     const closeBtn = alertDialog.querySelector('.close-btn');
     const closeBtnFooter = document.getElementById('closeAlertDialog');
 
-    closeBtn.addEventListener('click', () => alertDialog.close());
-    closeBtnFooter.addEventListener('click', () => alertDialog.close());
+    closeBtn?.addEventListener('click', () => alertDialog.close());
+    closeBtnFooter?.addEventListener('click', () => alertDialog.close());
 }
 
-// ====================================
-// WebSocket Connection
-// ====================================
-class WebSocketTemperature {
-    constructor(url, rapportMeteo, db) {
-        this.url = url;
-        this.rapportMeteo = rapportMeteo;
-        this.db = db;
-        this.ws = null;
-        this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 5;
-        this.reconnectDelay = 3000;
-        this.online = navigator.onLine;
-        
-        window.addEventListener('online', () => this.handleOnline());
-        window.addEventListener('offline', () => this.handleOffline());
-    }
-
-    connect() {
-        if (!this.online) {
-            console.log('Hors-ligne: WebSocket non connecté');
-            return;
-        }
-
-        try {
-            this.ws = new WebSocket(this.url);
-
-            this.ws.onopen = () => {
-                console.log('WebSocket connecté');
-                this.reconnectAttempts = 0;
-            };
-
-            this.ws.onmessage = async (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    const temp1 = parseFloat(data.temp1 || data.Valeur || 20);
-                    const temp2 = parseFloat(data.temp2 || data.Valeur || 15);
-                    
-                    this.rapportMeteo.ajouterTemperature(temp1, temp2);
-                    await this.db.addTemperature(temp1, temp2);
-                } catch (e) {
-                    console.error('Erreur parsing WebSocket:', e);
-                }
-            };
-
-            this.ws.onerror = (error) => {
-                console.error('Erreur WebSocket:', error);
-            };
-
-            this.ws.onclose = () => {
-                console.log('WebSocket fermé');
-                this.reconnect();
-            };
-        } catch (e) {
-            console.error('Erreur connexion WebSocket:', e);
-            this.reconnect();
-        }
-    }
-
-    reconnect() {
-        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            console.log('Nombre max de tentatives de reconnexion atteint');
-            return;
-        }
-
-        this.reconnectAttempts++;
-        console.log(`Tentative de reconnexion ${this.reconnectAttempts}...`);
-        
-        setTimeout(() => {
-            if (this.online) {
-                this.connect();
-            }
-        }, this.reconnectDelay);
-    }
-
-    handleOnline() {
-        this.online = true;
-        console.log('Connecté à internet');
-        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-            this.connect();
-        }
-    }
-
-    handleOffline() {
-        this.online = false;
-        console.log('Hors-ligne');
-        if (this.ws) {
-            this.ws.close();
-        }
-    }
-
-    disconnect() {
-        if (this.ws) {
-            this.ws.close();
-        }
-    }
-}
-
-
-// ====================================
-// Permissions & Notifications
-// ====================================
 function requestNotificationPermission() {
-    if (!('Notification' in window)) {
-        console.log('Notifications non supportées');
-        return;
-    }
-
-    if (Notification.permission === 'granted') {
-        return;
-    }
-
-    if (Notification.permission !== 'denied') {
-        Notification.requestPermission().then(permission => {
-            if (permission === 'granted') {
-                console.log('Permission de notification accordée');
-            }
-        });
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'denied' && Notification.permission !== 'granted') {
+        Notification.requestPermission();
     }
 }
 
-// ====================================
-// Initialisation
-// ====================================
-async function initializeApp() {
-    console.log('Initialisation de l\'application...');
-
-    // Initialiser la base de données
-    const db = new TemperatureDatabase();
-    await db.init();
-
-    // Créer les observables
+document.addEventListener('DOMContentLoaded', () => {
     const rapportMeteo = new RapportMeteoObservable();
 
-    // Récupérer les éléments DOM
     const temp1Element = document.getElementById('temperature1');
     const temp2Element = document.getElementById('temperature2');
     const minElement = document.getElementById('minTemp');
     const maxElement = document.getElementById('maxTemp');
     const messageElement = document.getElementById('message');
 
-    // Créer les observateurs
     const temperatureTempsReel = new TemperatureTempsReel(temp1Element, temp2Element);
     const minMaxTracker = new MinMaxTracker(minElement, maxElement);
     const historiqueGraphique = new HistoriqueGraphique('tempChart');
-    const alerteTemperature = new AlerteTemperature(messageElement, temp1Element, temp2Element, db);
+    const alerteTemperature = new AlerteTemperature(messageElement, temp1Element, temp2Element);
 
-    // Ajouter les observateurs
     rapportMeteo.ajouterObservateur(temperatureTempsReel);
     rapportMeteo.ajouterObservateur(minMaxTracker);
     rapportMeteo.ajouterObservateur(historiqueGraphique);
     rapportMeteo.ajouterObservateur(alerteTemperature);
 
-    // Charger les données du jour depuis IndexedDB
-    const todayData = await db.getTodayTemperatures();
-    if (todayData.length > 0) {
-        todayData.forEach(data => {
-            rapportMeteo.ajouterTemperature(data.temp1, data.temp2);
-        });
-    }
-
-    // Setup navigation
-    setupNavigation();
-
-    // Setup tabs
     setupTabs();
-
-    // Setup alert dialog
     setupAlertDialog();
-
-    // Permissions & Notifications
     requestNotificationPermission();
 
-    // Connexion WebSocket
-    const wsUrl = 'wss://ws.hothothot.dog:9502';
-    const webSocket = new WebSocketTemperature(wsUrl, rapportMeteo, db);
-    webSocket.connect();
+    loadHistorique(rapportMeteo);
+    
+    fetchTemperature(rapportMeteo);
+    setInterval(() => fetchTemperature(rapportMeteo), 5000);
 
-    // Mode simulation si WebSocket non disponible
-    if (!navigator.onLine) {
-        console.log('Mode hors-ligne: utilisation des données locales');
-    } else {
-        // Fallback avec API Open-Meteo (gratuite et sans authentification)
-        const fetchWeatherData = async () => {
-            try {
-                // Récupérer la position de l'utilisateur (France par défaut: Paris)
-                const latitude = 48.8566;
-                const longitude = 2.3522;
-                
-                const response = await fetch(
-                    `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m&temperature_unit=celsius&timezone=Europe/Paris`
-                );
-                
-                if (!response.ok) throw new Error('Erreur API météo');
-                
-                const data = await response.json();
-                const currentTemp = data.current.temperature_2m;
-                const humidity = data.current.relative_humidity_2m;
-                
-                // Simuler deux capteurs avec légère variation
-                const temp1 = parseFloat(currentTemp.toFixed(1));
-                const temp2 = parseFloat((currentTemp + (Math.random() * 2 - 1)).toFixed(1));
-                
-                console.log(`🌡️ Températures API: temp1=${temp1}°C, temp2=${temp2}°C, humidité=${humidity}%`);
-                rapportMeteo.ajouterTemperature(temp1, temp2);
-                await db.addTemperature(temp1, temp2);
-            } catch (error) {
-                console.error('Erreur lors de la récupération de la météo:', error);
-            }
-        };
-        
-        // Récupérer les données à l'initialisation et toutes les 30 secondes
-        fetchWeatherData();
-        setInterval(fetchWeatherData, 30000);
-    }
-
-    // Sauvegarder les alertes périodiquement
     setInterval(() => {
         alerteTemperature.sauvegarderAlertes();
     }, 5000);
 
-    // Réinitialiser les min/max chaque jour
-    checkDailyReset(minMaxTracker);
-}
-
-// ====================================
-// Réinitialisation Quotidienne
-// ====================================
-function checkDailyReset(minMaxTracker) {
-    const lastResetDate = localStorage.getItem('hothothot-last-reset-date');
-    const today = new Date().toLocaleDateString('fr-FR');
-
-    if (lastResetDate !== today) {
-        console.log('Nouveau jour: réinitialisation des min/max');
-        minMaxTracker.reset();
-        localStorage.setItem('hothothot-last-reset-date', today);
+    const btnCompte = document.getElementById('btnCompte');
+    if (btnCompte) {
+        btnCompte.addEventListener('click', (e) => {
+            e.preventDefault();
+            chargerPageCompte('/mon-compte', '/ressources/compte.json');
+        });
     }
 
-    // Vérifier chaque heure
-    setInterval(() => {
-        const currentDate = new Date().toLocaleDateString('fr-FR');
-        const savedDate = localStorage.getItem('hothothot-last-reset-date');
-        
-        if (savedDate !== currentDate) {
-            minMaxTracker.reset();
-            localStorage.setItem('hothothot-last-reset-date', currentDate);
-        }
-    }, 3600000); // Chaque heure
-}
+    const btnDoc = document.getElementById('btnDoc');
+    if (btnDoc) {
+        btnDoc.addEventListener('click', (e) => {
+        e.preventDefault();
+        chargerPageDoc('/documentation', '/ressources/documentation.json');
+        });
+    }
 
-// Attendre que le DOM soit chargé
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeApp);
-} else {
-    initializeApp();
-}
+    window.addEventListener('popstate', (e) => {
+    const pageAcc = document.getElementById('accueil');
+    const pageCompte = document.getElementById('pageMonCompte');
+    const pageDoc = document.getElementById('pageDocumentation');
 
+    if (pageCompte) pageCompte.style.display = 'none';
+    if (pageDoc) pageDoc.style.display = 'none';
 
+    if (e.state && e.state.page === 'compte') {
+        pageAcc.style.display = 'none';
+        pageCompte.style.display = 'block';
+    } else if (e.state && e.state.page === 'doc') {
+        pageAcc.style.display = 'none';
+        pageDoc.style.display = 'block';
+    } else {
+        pageAcc.style.display = 'block';
+    }
+    });
+});
