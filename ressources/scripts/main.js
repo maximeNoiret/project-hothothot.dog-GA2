@@ -1,6 +1,11 @@
-// ====================================
-// Database Management avec IndexedDB
-// ====================================
+/**
+ * Main.js - Point d'entrée refactorisé mais fonctionnel
+ * Version modulaire et maintenable
+ */
+
+// ============================================
+// DATABASE SERVICE
+// ============================================
 class TemperatureDatabase {
     constructor() {
         this.dbName = 'HotHotHot';
